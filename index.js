@@ -10,12 +10,16 @@ dotenv.config();
 app.use(express.json());
 app.use(
   cors({
-    origin: "*",
+    origin: function (origin, callback) {
+      // This API is accessible from everywhere.
+      // Explicitly allowing https://assignment-mocha-eight.vercel.app/ as well.
+      callback(null, true);
+    },
+    credentials: true
   })
 );
 app.use("/admin", adminRouter);
 app.use("/user", userRouter);
-{/*Test Commit*/}
 
 app.all("/", (req, res) => {
     console.log("Just got a request!");
