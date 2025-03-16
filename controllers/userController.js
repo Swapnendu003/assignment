@@ -2,9 +2,14 @@ const { Coupon } = require("../models/coupons");
 const { Claim } = require("../models/claim");
 
 const getAvailableCoupons = async (req, res) => {
+  console.log("[DEBUG] getAvailableCoupons called", {
+    ipAddress: req.ip,
+    sessionId: req.cookies?.sessionId || req.headers['x-session-id']
+  });
+
   try {
     const ipAddress = req.ip;
-    const sessionId = req.cookies.sessionId || req.headers['x-session-id'];
+    const sessionId = req.cookies?.sessionId || req.headers['x-session-id'];
     
     const cooldownPeriod = 24 * 60 * 60 * 1000;
     const cooldownDate = new Date(Date.now() - cooldownPeriod);
@@ -43,16 +48,23 @@ const getAvailableCoupons = async (req, res) => {
       availableCoupons,
       message: "You can claim one of these coupons"
     });
+
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 const claimCouponById = async (req, res) => {
+  console.log("[DEBUG] claimCouponById called", {
+    couponId: req.params.couponId,
+    ipAddress: req.ip,
+    sessionId: req.cookies?.sessionId || req.headers['x-session-id']
+  });
+
   try {
     const { couponId } = req.params;
     const ipAddress = req.ip;
-    const sessionId = req.cookies.sessionId || req.headers['x-session-id'];
+    const sessionId = req.cookies?.sessionId || req.headers['x-session-id'] || 'fallback-session-id';
     const userAgent = req.headers['user-agent'];
     
     const cooldownPeriod = 24 * 60 * 60 * 1000;
@@ -118,9 +130,14 @@ const claimCouponById = async (req, res) => {
 };
 
 const claimNextAvailableCoupon = async (req, res) => {
+  console.log("[DEBUG] claimNextAvailableCoupon called", {
+    ipAddress: req.ip,
+    sessionId: req.cookies?.sessionId || req.headers['x-session-id']
+  });
+
   try {
     const ipAddress = req.ip;
-    const sessionId = req.cookies.sessionId || req.headers['x-session-id'];
+    const sessionId = req.cookies?.sessionId || req.headers['x-session-id'] || 'fallback-session-id';
     const userAgent = req.headers['user-agent'];
     
     const cooldownPeriod = 24 * 60 * 60 * 1000;
@@ -181,9 +198,14 @@ const claimNextAvailableCoupon = async (req, res) => {
 };
 
 const checkEligibility = async (req, res) => {
+  console.log("[DEBUG] checkEligibility called", {
+    ipAddress: req.ip,
+    sessionId: req.cookies?.sessionId || req.headers['x-session-id']
+  });
+
   try {
     const ipAddress = req.ip;
-    const sessionId = req.cookies.sessionId || req.headers['x-session-id'];
+    const sessionId = req.cookies?.sessionId || req.headers['x-session-id'];
     
     const cooldownPeriod = 24 * 60 * 60 * 1000;
     const cooldownDate = new Date(Date.now() - cooldownPeriod);
