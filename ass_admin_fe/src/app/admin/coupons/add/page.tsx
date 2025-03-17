@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -6,6 +5,20 @@ import { useRouter } from 'next/navigation';
 import AdminLayout from '@/components/AdminLayout';
 import withAuth from '@/utils/withAuth';
 import { createCoupon, createCouponsBulk } from '@/services/coupons';
+import * as XLSX from 'xlsx';
+
+function parseExpiryDate(raw: string): string | undefined {
+  if (!raw) return undefined;
+  if (raw.includes('/')) {
+    const [day, month, year] = raw.split('/');
+    const dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+    if (isNaN(dateObj.getTime())) return undefined;
+    return dateObj.toISOString().slice(0, 10);
+  }
+  const parsed = new Date(raw);
+  if (isNaN(parsed.getTime())) return undefined;
+  return parsed.toISOString().slice(0, 10);
+}
 
 function AddCouponPage() {
   const router = useRouter();
@@ -13,6 +26,7 @@ function AddCouponPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [bulkCouponsData, setBulkCouponsData] = useState<{ code: string; description: string; expiresAt?: string }[]>([]);
 
   const [singleForm, setSingleForm] = useState({
     code: '',
@@ -33,6 +47,21 @@ function AddCouponPage() {
   const handleBulkFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setBulkForm({ ...bulkForm, [name]: value });
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+    const file = e.target.files[0];
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data, { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const parsed = XLSX.utils.sheet_to_json(sheet);
+    const formatted = (parsed as any[]).map((row: any) => ({
+      code: row['Coupon Name'] || '',
+      description: row['Description'] || '',
+      expiresAt: parseExpiryDate(row['Expiry Date'] || '')
+    }));
+    setBulkCouponsData(formatted);
   };
 
   const handleSingleSubmit = async (e: React.FormEvent) => {
@@ -68,22 +97,9 @@ function AddCouponPage() {
     setSuccess(null);
 
     try {
-      const codes = bulkForm.coupons
-        .split('\n')
-        .map(code => code.trim())
-        .filter(code => code);
+      await createCouponsBulk({ coupons: bulkCouponsData });
 
-      if (codes.length === 0) {
-        throw new Error('Please enter at least one coupon code');
-      }
-      const couponsData = codes.map(code => ({
-        code,
-        description: bulkForm.description
-      }));
-
-      await createCouponsBulk({ coupons: couponsData });
-
-      setSuccess(`${codes.length} coupons created successfully!`);
+      setSuccess(`${bulkCouponsData.length} coupons created successfully!`);
       setBulkForm({ coupons: '', description: '' });
       setTimeout(() => {
         router.push('/admin/coupons');
@@ -108,7 +124,11 @@ function AddCouponPage() {
           className="flex items-center rounded-md bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-gray-300 hover:bg-gray-50"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+            <path
+              fillRule="evenodd"
+              d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
+              clipRule="evenodd"
+            />
           </svg>
           Back to Coupons
         </button>
@@ -117,7 +137,11 @@ function AddCouponPage() {
       {error && (
         <div className="mb-4 flex items-center rounded-md bg-red-50 p-4 text-red-700">
           <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+              clipRule="evenodd"
+            />
           </svg>
           <p>{error}</p>
         </div>
@@ -126,7 +150,11 @@ function AddCouponPage() {
       {success && (
         <div className="mb-4 flex items-center rounded-md bg-green-50 p-4 text-green-700">
           <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+              clipRule="evenodd"
+            />
           </svg>
           <p>{success}</p>
         </div>
@@ -293,56 +321,60 @@ function AddCouponPage() {
                   </div>
                   <div className="ml-3 flex-1 md:flex md:justify-between">
                     <p className="text-sm text-blue-700">
-                      Create multiple coupons at once. Enter one coupon code per line.
-                      All coupons will share the same description.
+                      Upload an Excel file to create multiple coupons at once.
+                      <br />
+                      <a href="/files/sample-coupons.xlsx" download className="text-blue-600 underline">
+                        Download sample Excel
+                      </a>
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div>
-                  <label htmlFor="coupons" className="block text-sm font-medium text-gray-700">
-                    Coupon Codes <span className="text-red-500">*</span>
-                  </label>
-                  <div className="mt-1">
-                    <textarea
-                      id="coupons"
-                      name="coupons"
-                      value={bulkForm.coupons}
-                      onChange={handleBulkFormChange}
-                      required
-                      rows={6}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm font-mono"
-                      placeholder="SUMMER2023-1&#10;SUMMER2023-2&#10;SUMMER2023-3"
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Enter one coupon code per line. Each code must be unique.
-                  </p>
-                </div>
-
-                <div>
-                  <label htmlFor="bulk-description" className="block text-sm font-medium text-gray-700">
-                    Common Description <span className="text-red-500">*</span>
-                  </label>
-                  <div className="mt-1">
-                    <textarea
-                      id="bulk-description"
-                      name="description"
-                      value={bulkForm.description}
-                      onChange={handleBulkFormChange}
-                      required
-                      rows={3}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                      placeholder="Common description for all coupons"
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    This description will be applied to all coupons created in this batch.
-                  </p>
-                </div>
+              <div
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  // handleFileUpload logic for dropped file
+                }}
+                className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-6 text-center text-sm text-gray-500"
+              >
+                <p className="mb-2">Drag &amp; drop your Excel file here</p>
+                <p className="mb-2">or</p>
+                <label className="cursor-pointer text-blue-600 underline">
+                  Click to upload
+                  <input
+                    type="file"
+                    accept=".xlsx, .xls"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </label>
               </div>
+
+              {bulkCouponsData.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium">Parsed Coupons:</h3>
+                  <table className="min-w-full mt-2 text-sm text-left">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="px-2 py-1">Code</th>
+                        <th className="px-2 py-1">Description</th>
+                        <th className="px-2 py-1">Expires At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkCouponsData.map((c, index) => (
+                        <tr key={index} className="border-b">
+                          <td className="px-2 py-1">{c.code}</td>
+                          <td className="px-2 py-1">{c.description}</td>
+                          <td className="px-2 py-1">{c.expiresAt || 'No Expiry'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               <div className="flex justify-end space-x-3 border-t pt-6">
                 <button

@@ -4,6 +4,17 @@ const { Claim } = require("../models/claim");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+function parseDate(raw) {
+  if (!raw) return null;
+  if (raw.includes('/')) {
+    const [day, month, year] = raw.split('/');
+    const dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+    return isNaN(dateObj.getTime()) ? null : dateObj;
+  }
+  const dateObj = new Date(raw);
+  return isNaN(dateObj.getTime()) ? null : dateObj;
+}
+
 const registerAdmin = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -133,7 +144,7 @@ const getAllCoupons = async (req, res) => {
       const newCoupon = new Coupon({
         code,
         description,
-        expiresAt: expiresAt ? new Date(expiresAt) : null
+        expiresAt: parseDate(expiresAt)
       });
       
       await newCoupon.save();
@@ -175,7 +186,7 @@ const getAllCoupons = async (req, res) => {
       const couponsToInsert = coupons.map(coupon => ({
         code: coupon.code,
         description: coupon.description,
-        expiresAt: coupon.expiresAt ? new Date(coupon.expiresAt) : null,
+        expiresAt: parseDate(coupon.expiresAt),
         isActive: true,
         isUsed: false
       }));
