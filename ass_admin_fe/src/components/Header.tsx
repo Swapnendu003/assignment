@@ -28,7 +28,7 @@ export default function Header({ onOpenSidebar }: HeaderProps) {
 
   const handleLogout = () => {
     logout();
-    router.push('/admin/login');
+    router.push('/');
   };
 
   return (

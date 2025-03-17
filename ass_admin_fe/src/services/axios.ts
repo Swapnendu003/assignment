@@ -29,7 +29,7 @@ axiosInstance.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT';
       if (typeof window !== 'undefined') {
-        window.location.href = '/admin/login';
+        window.location.href = '/';
       }
     }
     return Promise.reject(error);
